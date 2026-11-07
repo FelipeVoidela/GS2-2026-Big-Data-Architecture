@@ -104,6 +104,15 @@ def imagem(arq: Path, texto: str, largura_cm: float = 17, corte_px: int | None =
     legenda(texto)
 
 
+def print_ou_pendente(arquivo: str, texto: str, largura_cm: float = 17):
+    """Usa o print de docs/prints/ se ele já existe; senão, deixa o espaço marcado para inserir."""
+    caminho = PRINTS / arquivo
+    if caminho.exists():
+        imagem(caminho, texto, largura_cm)
+    else:
+        print_pendente(texto)
+
+
 def tabela(cabecalho: list[str], linhas: list[list[str]], larguras: list[float] | None = None, tam: float = 9):
     t = doc.add_table(rows=1, cols=len(cabecalho))
     t.style = "Light Grid Accent 1"
@@ -273,14 +282,14 @@ h("Requisito 04 · Dois lotes enviados ao Volume", 2)
 par("scripts/montar_lotes.py separa os arquivos por dia de coleta: lote_01 = execução agendada de 07/11 (06h), lote_02 = "
     "execução agendada de 08/11 (06h). Cada lote foi enviado pela interface do Databricks para "
     "/Volumes/workspace/gs/chegada/<fonte>/.")
-print_pendente("Catalog Explorer > workspace > gs > Volumes > chegada > inspecoes, mostrando os arquivos dos dois dias")
-print_pendente("Janela de upload do 2º lote (Upload to this volume)")
+print_ou_pendente("databricks_volume.jpg", "Volume workspace.gs.chegada, pasta inspecoes: um arquivo por dia de coleta (lote 1 e lote 2)")
+print_ou_pendente("databricks_upload_lote2.jpg", "Envio do 2º lote pela interface (Upload to this volume)")
 
 h("Requisito 05 · Bronze incremental e sem duplicação", 2)
 par("Auto Loader (cloudFiles) com checkpoint por fonte e trigger(availableNow=True). Tudo é lido como texto (inferColumnTypes = "
     "false) e cada linha ganha arquivo_origem, data_coleta e carregado_em. No 2º lote só os arquivos novos entram; rodar de novo "
     "sem arquivo novo insere 0 linhas. As contagens estão no item 07.")
-print_pendente("Notebook 01 executado: célula do Auto Loader concluída e tabela de contagens da execução")
+print_ou_pendente("databricks_bronze_lote1.jpg", "Notebook 01 depois do lote 1: o Auto Loader carregou 1 arquivo por fonte (linhas_antes = 0)")
 
 h("Requisito 06 · Prata: tratamento, MERGE e regras de qualidade", 2)
 par("Cada fonte é lida da Bronze em streaming (só o que é novo) e cada micro-lote passa por: tipagem com try_cast/try_to_timestamp "
@@ -296,15 +305,16 @@ tabela(["Tabela", "Regra", "O que barra"], [
     ["prata_area_risco", "AREA_01/02/03", "grau fora de R1–R4, polígono ausente, moradias negativas"],
     ["todas", "DEDUP", "registros repetidos pela chave no lote (ex.: reenvio do robô)"],
 ], [4, 4.3, 8.7], tam=8.5)
-print_pendente("Notebook 02: tabela 'Resultado das regras de qualidade nesta execução' (tabela, regra, registros_avaliados, barrados)")
-print_pendente("SELECT * FROM workspace.gs.prata_quarentena LIMIT 10 (registros barrados com o motivo)")
+print_ou_pendente("databricks_prata_regras_a.jpg", "Notebook 02: total barrado por regra de qualidade em cada execução (parte 1)")
+print_ou_pendente("databricks_prata_regras_b.png", "Notebook 02: total barrado por regra de qualidade em cada execução (parte 2)")
+print_ou_pendente("databricks_prata_quarentena.jpg", "prata_quarentena: o registro barrado inteiro e as regras que ele violou")
 
 h("Requisito 07 · Ouro dimensional e 5 consultas", 2)
 par("Modelo estrela: ouro_fato_inspecao (1 bueiro × 1 dia) com ouro_dim_bueiro, ouro_dim_area_risco e ouro_dim_data; e um segundo fato, "
     "ouro_fato_solicitacao_sp156. O cruzamento bueiro × área de risco usa índice H3 (resolução 10, ~66 m, com vizinhança de 1 anel): "
     "vira um JOIN por número inteiro, sem cálculo geométrico pesado. O score_prioridade (0–100) soma status do robô (até 50), grau da "
     "área de risco (até 30), chuva prevista (até 15) e pedidos do SP156 por perto (até 5). As 5 consultas estão no item 08.")
-print_pendente("Catalog Explorer com as tabelas ouro_* do schema workspace.gs")
+print_ou_pendente("databricks_ouro_tabelas.jpg", "Tabelas e views da Ouro no schema workspace.gs, com a descrição de cada uma")
 
 h("Requisito 08 · LGPD na Ouro e uso pelo MVP", 2)
 tabela(["Dado pessoal", "Na Prata (restrita)", "Na Ouro"], [
@@ -318,7 +328,7 @@ par("O sal é gerado dentro do Databricks (secret scope ou tabela config_lgpd) e
     "então não aparece no código nem no texto da query. Contrato com o produto: o mapa público lê SOMENTE a view "
     "ouro_vw_mapa_cidadao (id do bueiro, coordenada, rua, status, nível de alerta, chuva prevista, situação de risco), que não tem "
     "dado pessoal. O bot de RPA lê ouro_vw_rota_limpeza.")
-print_pendente("Notebook 03: célula 'Prova da LGPD na Ouro' (Prata x Ouro)")
+print_ou_pendente("databricks_ouro_lgpd.jpg", "Notebook 03, prova da LGPD: o que a Prata guarda (restrita) e o que a Ouro expõe (hash, faixa e máscara)")
 imagem(PRINTS / "mvp_evite_a_area.png", "Tela do MVP lendo ouro_vw_mapa_cidadao: filtro 'Evite a área' e detalhe de um bueiro crítico em área R3")
 imagem(PRINTS / "mvp_celular.png", "Tela do MVP no celular: mapa, resumo por nível de alerta e chuva prevista", largura_cm=7)
 pendente("Os prints do MVP acima usam a prévia local (scripts/preview_local.py). Depois de rodar o notebook 03, troque o "
@@ -328,7 +338,7 @@ h("Requisito 09 · Repositório e README", 2)
 par("README com integrantes, ficha técnica, arquitetura, tabela de fontes, passo a passo para reproduzir (Airflow, lotes, "
     "Databricks, MVP), mapa requisito → arquivo e LGPD. Estrutura: dags/, databricks/, amostras/, mvp/, scripts/, docs/. "
     "Sem chaves, senhas nem dados pessoais reais (.env, chegada/ e lotes/ no .gitignore; amostra do SP156 com número e CEP mascarados).")
-print_pendente("Página do repositório público no GitHub com o README renderizado")
+print_ou_pendente("github_readme.jpg", "Repositório público no GitHub com o README renderizado")
 
 # ------------------------------------------------------------------ 06
 doc.add_page_break()
@@ -346,7 +356,7 @@ par("Leitura: no 2º lote cada tabela recebeu só o arquivo novo (o número de a
     "somam as dos dois dias). Na execução seguinte, sem arquivo novo, o checkpoint do Auto Loader "
     "não relê nada e a contagem fica igual: não há duplicação. A repetição de conteúdo entre dias (ex.: o mesmo trimestre do "
     "SP156) é resolvida na Prata pelo MERGE na chave.", tam=9.5)
-print_pendente("Notebook 01, célula 'Histórico das cargas' depois das três execuções (lote 1, lote 2, reexecução)")
+print_ou_pendente("databricks_bronze_historico.jpg", "Notebook 01, histórico das cargas: lote 1, lote 2 e reexecução sem arquivo novo (0 linhas inseridas)")
 
 # ------------------------------------------------------------------ 08
 h("08 · As 5 consultas SQL com resultado e interpretação")
@@ -398,7 +408,8 @@ consultas = [
 for titulo, sql, interp in consultas:
     h(titulo, 2)
     codigo(sql)
-    print_pendente(f"Resultado da {titulo.split(' ·')[0]} no notebook 04")
+    n = titulo.split(" ·")[0].split()[-1]
+    print_ou_pendente(f"databricks_consulta{n}.jpg", f"Resultado da {titulo.split(' ·')[0]} no notebook 04")
     rico(("Interpretação: ", True), interp)
 
 # ------------------------------------------------------------------ 09

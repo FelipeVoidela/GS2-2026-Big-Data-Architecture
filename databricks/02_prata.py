@@ -44,6 +44,11 @@ def tc(col: str, tipo: str):
 def dentro_de_sp(lat, lon):
     return lat.between(LAT_MIN, LAT_MAX) & lon.between(LON_MIN, LON_MAX)
 
+
+def js(col: str, caminho: str) -> str:
+    """A Bronze guarda objetos JSON aninhados como texto (inferColumnTypes = false): extrai um campo pelo caminho."""
+    return f"get_json_object({col}, '$.{caminho}')"
+
 # COMMAND ----------
 
 # MAGIC %md ## Motor genérico: regras → quarentena → dedup → MERGE
@@ -115,7 +120,8 @@ def processar(fonte: str, destino: str, transformar, regras: list, chave: list[s
     print(f"{destino}: ok")
 
 
-inicio_execucao = spark.sql("SELECT current_timestamp() AS t").first()["t"]
+# Texto formatado pelo próprio Spark (fuso da sessão): um datetime do Python perderia o fuso e o filtro erraria em 3 h.
+inicio_execucao = spark.sql("SELECT date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss.SSS') AS t").first()["t"]
 
 # COMMAND ----------
 
@@ -126,9 +132,13 @@ inicio_execucao = spark.sql("SELECT current_timestamp() AS t").first()["t"]
 
 # COMMAND ----------
 
+HOURLY = "struct<time:array<string>, precipitation:array<string>, precipitation_probability:array<string>>"
+
+
 def t_previsao(df):
     return (
-        df.select(
+        df.withColumn("hourly", F.from_json("hourly", HOURLY))   # na Bronze o objeto hourly é texto JSON
+        .select(
             tc("lat_grade", "DECIMAL(5,1)").alias("lat_grade"),
             tc("lon_grade", "DECIMAL(5,1)").alias("lon_grade"),
             tc("latitude", "DOUBLE").alias("lat_modelo"),
@@ -310,7 +320,8 @@ processar(
 # COMMAND ----------
 
 # MAGIC %md ## 5. Robô → `prata_inspecao`
-# MAGIC JSON aninhado (sensores, visão, IA embarcada, operador) achatado em colunas tipadas.
+# MAGIC JSON aninhado (sensores, visão, IA embarcada, operador) chega da Bronze como texto e é achatado em colunas tipadas
+# MAGIC com `get_json_object` + `try_cast`.
 
 # COMMAND ----------
 
@@ -323,24 +334,24 @@ def t_inspecao(df):
         F.col("id_bueiro"),
         F.col("robo_id"),
         F.expr("try_to_timestamp(inspecionado_em)").alias("inspecionado_em"),
-        tc("localizacao.lat", "DOUBLE").alias("latitude"),
-        tc("localizacao.lon", "DOUBLE").alias("longitude"),
-        F.initcap(F.trim("endereco.logradouro")).alias("logradouro"),
-        F.upper(F.trim("endereco.distrito")).alias("distrito"),
-        F.upper(F.trim("endereco.subprefeitura")).alias("subprefeitura"),
-        tc("sensores.ultrassom_profundidade_livre_cm", "DOUBLE").alias("profundidade_livre_cm"),
-        tc("sensores.profundidade_nominal_cm", "DOUBLE").alias("profundidade_nominal_cm"),
-        tc("sensores.nivel_agua_cm", "DOUBLE").alias("nivel_agua_cm"),
-        tc("sensores.chuva_detectada", "BOOLEAN").alias("chuva_detectada"),
-        F.lower(F.trim("visao.classe")).alias("classe_visao"),
-        tc("visao.confianca", "DOUBLE").alias("confianca_visao"),
-        F.col("visao.modelo").alias("modelo_visao"),
-        F.col("visao.foto_id").alias("foto_id"),
-        F.lower(F.trim("ia_embarcada.status")).alias("status_ia"),
-        tc("ia_embarcada.obstrucao_pct", "DOUBLE").alias("obstrucao_pct"),
-        F.col("operador.nome").alias("operador_nome"),          # dado pessoal: só sai da Prata como hash
-        F.col("operador.matricula").alias("operador_matricula"),
-        F.col("operador.email").alias("operador_email"),
+        tc(js("localizacao", "lat"), "DOUBLE").alias("latitude"),          # objetos aninhados chegam como texto JSON
+        tc(js("localizacao", "lon"), "DOUBLE").alias("longitude"),
+        F.initcap(F.trim(F.expr(js("endereco", "logradouro")))).alias("logradouro"),
+        F.upper(F.trim(F.expr(js("endereco", "distrito")))).alias("distrito"),
+        F.upper(F.trim(F.expr(js("endereco", "subprefeitura")))).alias("subprefeitura"),
+        tc(js("sensores", "ultrassom_profundidade_livre_cm"), "DOUBLE").alias("profundidade_livre_cm"),
+        tc(js("sensores", "profundidade_nominal_cm"), "DOUBLE").alias("profundidade_nominal_cm"),
+        tc(js("sensores", "nivel_agua_cm"), "DOUBLE").alias("nivel_agua_cm"),
+        tc(js("sensores", "chuva_detectada"), "BOOLEAN").alias("chuva_detectada"),
+        F.lower(F.trim(F.expr(js("visao", "classe")))).alias("classe_visao"),
+        tc(js("visao", "confianca"), "DOUBLE").alias("confianca_visao"),
+        F.expr(js("visao", "modelo")).alias("modelo_visao"),
+        F.expr(js("visao", "foto_id")).alias("foto_id"),
+        F.lower(F.trim(F.expr(js("ia_embarcada", "status")))).alias("status_ia"),
+        tc(js("ia_embarcada", "obstrucao_pct"), "DOUBLE").alias("obstrucao_pct"),
+        F.expr(js("operador", "nome")).alias("operador_nome"),          # dado pessoal: só sai da Prata como hash
+        F.expr(js("operador", "matricula")).alias("operador_matricula"),
+        F.expr(js("operador", "email")).alias("operador_email"),
         *LINHAGEM,
     ).withColumn("data_inspecao", F.to_date("inspecionado_em"))
 
@@ -370,6 +381,34 @@ display(spark.sql(f"""
   WHERE executado_em >= '{inicio_execucao}'
   GROUP BY tabela, regra, descricao
   ORDER BY tabela, regra
+"""))
+
+# COMMAND ----------
+
+# MAGIC %md ### Histórico das regras por execução (lote 1, lote 2, reexecução)
+
+# COMMAND ----------
+
+display(spark.sql(f"""
+  SELECT date_format(executado_em, 'dd/MM HH:mm') AS execucao, tabela, regra,
+         registros_no_lote AS registros_avaliados, barrados
+  FROM {T('qualidade_regras')}
+  ORDER BY executado_em, tabela, regra
+"""))
+
+# COMMAND ----------
+
+# MAGIC %md ### Amostra da quarentena: o registro barrado inteiro, com as regras que violou
+
+# COMMAND ----------
+
+display(spark.sql(f"""
+  SELECT date_format(executado_em, 'dd/MM HH:mm') AS execucao, tabela, regras_violadas,
+         substr(registro, 1, 120) AS registro_inicio, element_at(split(arquivo_origem, '/'), -1) AS arquivo
+  FROM {T('prata_quarentena')}
+  WHERE tabela IN ('prata_inspecao', 'prata_solicitacao_sp156', 'prata_pluviometro')
+  ORDER BY tabela, executado_em
+  LIMIT 15
 """))
 
 # COMMAND ----------
