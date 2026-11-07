@@ -1,0 +1,11 @@
+.env
+logs/
+config/
+plugins/
+chegada/*
+!chegada/.gitkeep
+lotes/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.tmp
