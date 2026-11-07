@@ -2,8 +2,9 @@
 Gera relatorio/Relatorio_BigData_BocaDeLobo.docx na ordem pedida pelo professor (itens 01 a 09).
 
 Prints do Airflow, do MVP e o diagrama já entram prontos. Trechos em AMARELO são o que a equipe ainda
-precisa completar: nomes/RM, prints do Databricks (que só existem depois de rodar os notebooks na conta
-da equipe), resultados reais das consultas e o link do repositório. Depois: Arquivo > Exportar > PDF.
+precisa completar: prints do Databricks (que só existem depois de rodar os notebooks na conta da equipe)
+e os resultados reais das consultas. As contagens da Bronze são calculadas a partir de lotes/.
+Depois: Arquivo > Exportar > PDF.
 
 Uso: python scripts/gerar_relatorio.py
 """
@@ -129,6 +130,35 @@ def tabela(cabecalho: list[str], linhas: list[list[str]], larguras: list[float] 
     return t
 
 
+def _linhas_arquivo(arq: Path) -> int:
+    if arq.suffix == ".csv":
+        import csv
+        with open(arq, encoding="utf-8", newline="") as fh:
+            return max(0, sum(1 for _ in csv.reader(fh)) - 1)
+    texto = arq.read_text(encoding="utf-8").strip()
+    if texto.startswith("["):
+        import json
+        return len(json.loads(texto))
+    return sum(1 for ln in texto.splitlines() if ln.strip())
+
+
+def linhas_bronze() -> list[list[str]]:
+    """Contagens esperadas da Bronze a partir de lotes/lote_01 e lotes/lote_02 (ou [COMPLETAR] se o lote não existe)."""
+    fmt = lambda n: f"{n:,}".replace(",", ".")  # noqa: E731
+    linhas = []
+    for fonte in ["previsao", "pluviometros", "areas_risco", "sp156", "inspecoes"]:
+        por_lote = []
+        for lote in ("lote_01", "lote_02"):
+            arqs = sorted((RAIZ / "lotes" / lote / fonte).glob(f"{fonte}_*.*"))
+            por_lote.append(sum(_linhas_arquivo(a) for a in arqs) if arqs else None)
+        l1, l2 = por_lote
+        if l1 is None or l2 is None:
+            linhas.append([f"bronze_{fonte}", fmt(l1) if l1 is not None else "[COMPLETAR]", "[COMPLETAR]", "[COMPLETAR]", "0"])
+        else:
+            linhas.append([f"bronze_{fonte}", fmt(l1), fmt(l1 + l2), fmt(l1 + l2), "0"])
+    return linhas
+
+
 def codigo(texto: str):
     p = doc.add_paragraph()
     r = p.add_run(texto)
@@ -155,12 +185,12 @@ r.font.color.rgb = RGBColor(0x0F, 0x2A, 0x4A)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 r = p.add_run("Componente Dados: pipeline Airflow + Lakehouse Bronze/Prata/Ouro no Databricks\n\n"
-              "Big Data Architecture & Data Integration\nProf. Francisco Elanio Bezerra\n\n"
-              "Tema 2 · Segurança e emergências (enchentes) · ODS 11, 13 e 3")
+              "Big Data Architecture & Data Integration\n\n"
+              "Segurança e emergências (enchentes) · ODS 11, 13 e 3")
 r.font.size = Pt(13)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run("\n\nRepositório: https://github.com/FelipeVoidela/gs-boca-de-lobo-big-data")
+r = p.add_run("\n\nRepositório: https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture")
 r.bold = True
 doc.add_page_break()
 
@@ -225,9 +255,9 @@ par("DAG gs_boca_de_lobo_coleta, agendado para 06h todo dia (cron 0 6 * * *, fus
     "Cada tarefa grava um arquivo por coleta em chegada/<fonte>/<fonte>_AAAA-MM-DD.<ext>, de forma atômica (.tmp + rename) e "
     "idempotente (rodar de novo sobrescreve o mesmo arquivo).")
 imagem(PRINTS / "airflow_codigo.png", "Código do DAG no Airflow: agendamento, tarefas e dependências")
-codigo("chegada/\n  previsao/previsao_2026-11-06.json      previsao/previsao_2026-11-07.json\n"
-       "  pluviometros/pluviometros_2026-11-06.json  ...\n  areas_risco/areas_risco_2026-11-06.json  ...\n"
-       "  sp156/sp156_2026-11-06.csv              ...\n  inspecoes/inspecoes_2026-11-06.json      ...")
+codigo("chegada/\n  previsao/previsao_2026-11-07.json      previsao/previsao_2026-11-08.json\n"
+       "  pluviometros/pluviometros_2026-11-07.json  ...\n  areas_risco/areas_risco_2026-11-07.json  ...\n"
+       "  sp156/sp156_2026-11-07.csv              ...\n  inspecoes/inspecoes_2026-11-07.json      ...")
 
 h("Requisito 03 · Paralelismo, verificação e chaves fora do código", 2)
 par("inicio >> [5 coletas em paralelo] >> conferir_chegada >> notificar. A conferência falha se algum arquivo do dia não existe, "
@@ -240,8 +270,9 @@ imagem(PRINTS / "airflow_log_notificar.png", "Log da tarefa notificar (sem webho
 print_pendente("Admin > Variables com gs_alerta_webhook_url e gs_open_meteo_apikey cadastradas (valores mascarados)")
 
 h("Requisito 04 · Dois lotes enviados ao Volume", 2)
-par("scripts/montar_lotes.py separa os arquivos por dia de coleta: lote_01 = coleta de 06/11, lote_02 = coleta de 07/11. "
-    "Cada lote foi enviado pela interface do Databricks para /Volumes/workspace/gs/chegada/<fonte>/.")
+par("scripts/montar_lotes.py separa os arquivos por dia de coleta: lote_01 = execução agendada de 07/11 (06h), lote_02 = "
+    "execução agendada de 08/11 (06h). Cada lote foi enviado pela interface do Databricks para "
+    "/Volumes/workspace/gs/chegada/<fonte>/.")
 print_pendente("Catalog Explorer > workspace > gs > Volumes > chegada > inspecoes, mostrando os arquivos dos dois dias")
 print_pendente("Janela de upload do 2º lote (Upload to this volume)")
 
@@ -265,8 +296,6 @@ tabela(["Tabela", "Regra", "O que barra"], [
     ["prata_area_risco", "AREA_01/02/03", "grau fora de R1–R4, polígono ausente, moradias negativas"],
     ["todas", "DEDUP", "registros repetidos pela chave no lote (ex.: reenvio do robô)"],
 ], [4, 4.3, 8.7], tam=8.5)
-par("Referência para conferir o print (contagem local das inspeções dos dois lotes, 413 registros): INSP_01 barra 17, "
-    "INSP_02 barra 6, INSP_03 barra 3 e DEDUP remove 7, ficando 380 inspeções válidas.", italico=True, tam=9)
 print_pendente("Notebook 02: tabela 'Resultado das regras de qualidade nesta execução' (tabela, regra, registros_avaliados, barrados)")
 print_pendente("SELECT * FROM workspace.gs.prata_quarentena LIMIT 10 (registros barrados com o motivo)")
 
@@ -304,30 +333,26 @@ print_pendente("Página do repositório público no GitHub com o README renderiz
 # ------------------------------------------------------------------ 06
 doc.add_page_break()
 h("06 · Prints do Airflow: Graph e Grid com execuções concluídas")
-imagem(PRINTS / "airflow_grid.png", "Visão Grid: duas execuções (06/11 e 07/11), todas as tarefas em verde")
-imagem(PRINTS / "airflow_graph.png", "Visão Graph da execução agendada de 07/11/2026, 06h")
+imagem(PRINTS / "airflow_grid.png", "Visão Grid: execuções agendadas do DAG, todas as tarefas em verde")
+imagem(PRINTS / "airflow_graph.png", "Visão Graph de uma execução agendada (06h): coletas em paralelo, conferência e notificação")
 imagem(PRINTS / "airflow_execucoes.png", "Lista de execuções do DAG gs_boca_de_lobo_coleta")
 
 # ------------------------------------------------------------------ 07
 h("07 · Contagens da Bronze antes e depois do 2º lote e da 2ª execução")
-par("Valores esperados a partir dos arquivos coletados (conferir com o print da tabela controle_cargas):")
-tabela(["Tabela", "Após lote 1", "Após lote 2", "2ª execução sem arquivo novo", "Linhas inseridas na 2ª execução"], [
-    ["bronze_previsao", "56", "112", "112", "0"],
-    ["bronze_pluviometros", "724", "1.448", "1.448", "0"],
-    ["bronze_areas_risco", "793", "1.586", "1.586", "0"],
-    ["bronze_sp156", "10.758", "21.516", "21.516", "0"],
-    ["bronze_inspecoes", "202", "413", "413", "0"],
-], [4, 2.6, 2.6, 3.6, 4.2], tam=9)
-par("Leitura: no 2º lote cada tabela recebeu só o arquivo novo (a contagem dobra porque cada fonte manda um arquivo por dia; "
-    "o número de arquivos distintos passa de 1 para 2). Na execução seguinte, sem arquivo novo, o checkpoint do Auto Loader "
+par("Valores esperados a partir dos arquivos de lotes/ (conferir com o print da tabela controle_cargas):")
+tabela(["Tabela", "Após lote 1", "Após lote 2", "2ª execução sem arquivo novo", "Linhas inseridas na 2ª execução"],
+       linhas_bronze(), [4, 2.6, 2.6, 3.6, 4.2], tam=9)
+par("Leitura: no 2º lote cada tabela recebeu só o arquivo novo (o número de arquivos distintos passa de 1 para 2 e as linhas "
+    "somam as dos dois dias). Na execução seguinte, sem arquivo novo, o checkpoint do Auto Loader "
     "não relê nada e a contagem fica igual: não há duplicação. A repetição de conteúdo entre dias (ex.: o mesmo trimestre do "
     "SP156) é resolvida na Prata pelo MERGE na chave.", tam=9.5)
 print_pendente("Notebook 01, célula 'Histórico das cargas' depois das três execuções (lote 1, lote 2, reexecução)")
 
 # ------------------------------------------------------------------ 08
 h("08 · As 5 consultas SQL com resultado e interpretação")
-par("Arquivo databricks/04_consultas_mvp.sql. Limiar de chuva: 10 mm em 24 h (variável limiar_mm). Os números abaixo vêm da "
-    "prévia local com os mesmos dados e regras; confirmar com o resultado do Databricks.", italico=True, tam=9.5)
+par("Arquivo databricks/04_consultas_mvp.sql. Limiar de chuva: 10 mm em 24 h (variável limiar_mm).", italico=True, tam=9.5)
+pendente("As interpretações abaixo foram escritas com a prévia local. Depois de rodar o notebook 04 com os dois lotes, "
+         "troque os números pelos do resultado do Databricks (a data de referência passa a ser a do lote 2).")
 
 consultas = [
     ("Consulta 1 · IMPACTO: críticos em área de risco com chuva prevista",
@@ -390,7 +415,7 @@ par("Decisões que vale destacar: (1) GeoSampa gravado com a geometria como text
 par("Limitações e próximos passos: os pluviômetros do endpoint público do Cemaden não trazem coordenadas (a chuva observada entra "
     "como média da capital; com o token da API PED dá para ligar cada estação ao bairro); o SP156 aberto é trimestral; e o robô é "
     "simulado até o Maker Lab entregar o carrinho, quando só a função coletar_inspecoes muda.")
-rico(("Repositório público: ", True), "https://github.com/FelipeVoidela/gs-boca-de-lobo-big-data")
+rico(("Repositório público: ", True), "https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture")
 
 SAIDA.parent.mkdir(parents=True, exist_ok=True)
 doc.save(SAIDA)

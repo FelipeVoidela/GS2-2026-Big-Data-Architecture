@@ -1,8 +1,6 @@
 # Boca de Lobo · componente Dados (Big Data Architecture & Data Integration)
 
 > **GS 2026.2 · CitizenTech · Engenharia de Software 4º ano · FIAP**
-> Prof. Francisco Elanio Bezerra · Tema 2: Boca de Lobo
-> Repositório: https://github.com/FelipeVoidela/gs-boca-de-lobo-big-data
 
 Antes de cada temporal, um robô inspeciona as bocas de lobo do bairro e descobre quais estão entupidas.
 Este repositório é o **pipeline de dados** do produto: coleta a previsão de chuva, os pluviômetros, as áreas
@@ -79,7 +77,7 @@ amostras/                     um pouco de cada fonte (SP156 com número e CEP ma
 mvp/                          tela do cidadão (Leaflet) que lê o export de ouro_vw_mapa_cidadao
 scripts/                      lotes, amostras, prévia local da Ouro, diagrama
 docs/                         diagrama e prints
-relatorio/                    relatório em .docx (completar e exportar para PDF)
+relatorio/                    relatório (.docx gerado por scripts/gerar_relatorio.py; o PDF vai no Teams)
 docker-compose.yaml           Airflow 3.3.2 local (LocalExecutor + Postgres)
 ```
 
@@ -90,7 +88,7 @@ docker-compose.yaml           Airflow 3.3.2 local (LocalExecutor + Postgres)
 Pré-requisito: Docker Desktop.
 
 ```bash
-cp .env.example .env          # Windows: copy .env.example .env  (gere a FERNET_KEY como indicado no arquivo)
+cp .env.example .env          # Windows: copy .env.example .env  (gere a FERNET_KEY e troque as senhas no arquivo)
 docker compose up airflow-init
 docker compose up -d
 ```
@@ -110,11 +108,11 @@ Nenhuma chave está no código. Se uma fonte cai, a tarefa tenta de novo 2 vezes
 
 ### 2. Lotes para o Databricks
 
-Rode a coleta em **dias diferentes** e monte um lote por dia:
+Deixe o DAG ligado: cada execução agendada das 06h gera os arquivos de um dia. Monte um lote por dia de coleta:
 
 ```bash
-python scripts/montar_lotes.py --lote 1 --datas 2026-11-06
-python scripts/montar_lotes.py --lote 2 --datas 2026-11-07
+python scripts/montar_lotes.py --lote 1 --datas 2026-11-07
+python scripts/montar_lotes.py --lote 2 --datas 2026-11-08
 ```
 
 ### 3. Databricks Free Edition
@@ -171,6 +169,5 @@ O repositório não tem chaves, senhas nem dados pessoais reais (`.env`, `chegad
 * Os pluviômetros do Cemaden no endpoint público não trazem coordenadas, então a chuva observada entra como média
   da capital (indicador de solo encharcado). Com o token da API PED do Cemaden dá para ligar cada estação ao bairro.
 * O SP156 aberto é trimestral: o pipeline sempre pega o arquivo mais recente, que pode ter até 3 meses de atraso.
-* O 1º lote de exemplo (06/11) foi coletado no dia 07/11 por execução manual com data lógica de 06/11; o Open-Meteo devolve
-  a previsão daquele dia, mas Cemaden, GeoSampa e SP156 são o retrato do momento da coleta. Para a entrega, mantenham o DAG
-  ligado e usem coletas de dias reais diferentes.
+* Cemaden, GeoSampa e SP156 são o retrato do momento da coleta: por isso os lotes usam só execuções agendadas de dias
+  diferentes, nunca execuções manuais com data lógica no passado (que trariam o retrato de hoje com a data de ontem no nome).
