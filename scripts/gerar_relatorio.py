@@ -104,13 +104,14 @@ def imagem(arq: Path, texto: str, largura_cm: float = 17, corte_px: int | None =
     legenda(texto)
 
 
-def print_ou_pendente(arquivo: str, texto: str, largura_cm: float = 17):
-    """Usa o print de docs/prints/ se ele já existe; senão, deixa o espaço marcado para inserir."""
-    caminho = PRINTS / arquivo
-    if caminho.exists():
-        imagem(caminho, texto, largura_cm)
-    else:
-        print_pendente(texto)
+def print_ou_pendente(arquivo: str | tuple[str, ...], texto: str, largura_cm: float = 17):
+    """Usa o primeiro print de docs/prints/ que existe (aceita nomes alternativos); senão, deixa o espaço marcado."""
+    nomes = (arquivo,) if isinstance(arquivo, str) else arquivo
+    for nome in nomes:
+        if (PRINTS / nome).exists():
+            imagem(PRINTS / nome, texto, largura_cm)
+            return
+    print_pendente(texto)
 
 
 def tabela(cabecalho: list[str], linhas: list[list[str]], larguras: list[float] | None = None, tam: float = 9):
@@ -276,13 +277,14 @@ par("inicio >> [5 coletas em paralelo] >> conferir_chegada >> notificar. A confe
     "emergência, a falha silenciosa é o pior cenário.")
 imagem(PRINTS / "airflow_graph.png", "Visão Graph: 5 coletas em paralelo, conferência e notificação, todas com sucesso")
 imagem(PRINTS / "airflow_log_notificar.png", "Log da tarefa notificar (sem webhook configurado, a mensagem vai para o log)", corte_px=380)
-print_pendente("Admin > Variables com gs_alerta_webhook_url e gs_open_meteo_apikey cadastradas (valores mascarados)")
+print_ou_pendente("airflow_variables.png", "Admin > Variables: gs_alerta_webhook_url (e gs_open_meteo_apikey, se usada) cadastradas, valores mascarados")
 
 h("Requisito 04 · Dois lotes enviados ao Volume", 2)
 par("scripts/montar_lotes.py separa os arquivos por dia de coleta: lote_01 = execução agendada de 07/11 (06h), lote_02 = "
     "execução agendada de 08/11 (06h). Cada lote foi enviado pela interface do Databricks para "
     "/Volumes/workspace/gs/chegada/<fonte>/.")
-print_ou_pendente("databricks_volume.jpg", "Volume workspace.gs.chegada, pasta inspecoes: um arquivo por dia de coleta (lote 1 e lote 2)")
+print_ou_pendente(("databricks_volume.jpg", "databricks_volume_lote1.jpg"),
+                  "Volume workspace.gs.chegada, pasta inspecoes: um arquivo por dia de coleta, enviado pela interface")
 print_ou_pendente("databricks_upload_lote2.jpg", "Envio do 2º lote pela interface (Upload to this volume)")
 
 h("Requisito 05 · Bronze incremental e sem duplicação", 2)
