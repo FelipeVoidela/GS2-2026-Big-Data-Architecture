@@ -13,11 +13,11 @@ mapa público a resposta para *"onde não passar hoje?"*.
 
 | Nome completo | RM |
 |---|---|
-| _preencher_ | _RM_ |
-| _preencher_ | _RM_ |
-| _preencher_ | _RM_ |
-| _preencher_ | _RM_ |
-| _preencher_ | _RM_ |
+| Açussena Macedo Mautone | 552568 |
+| Felipe Heilmann Marques | 551026 |
+| Felipe Voidela Toledo | 98595 |
+| Carlos Eduardo Caramante Ribeiro | 552159 |
+| Ian Cancian Nachtergaele | 98387 |
 
 ## Ficha técnica do MVP
 

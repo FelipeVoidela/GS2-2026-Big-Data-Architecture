@@ -166,7 +166,13 @@ doc.add_page_break()
 
 # ------------------------------------------------------------------ 01
 h("01 · Integrantes")
-tabela(["Nome completo", "RM"], [["[COMPLETAR nome completo]", "[COMPLETAR RM]"] for _ in range(5)], [12, 4], tam=10.5)
+tabela(["Nome completo", "RM"], [
+    ["Açussena Macedo Mautone", "552568"],
+    ["Felipe Heilmann Marques", "551026"],
+    ["Felipe Voidela Toledo", "98595"],
+    ["Carlos Eduardo Caramante Ribeiro", "552159"],
+    ["Ian Cancian Nachtergaele", "98387"],
+], [12, 4], tam=10.5)
 
 # ------------------------------------------------------------------ 02
 h("02 · O produto em uma frase e as perguntas que o MVP responde")
