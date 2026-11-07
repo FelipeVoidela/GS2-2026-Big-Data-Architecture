@@ -160,8 +160,7 @@ r = p.add_run("Componente Dados: pipeline Airflow + Lakehouse Bronze/Prata/Ouro 
 r.font.size = Pt(13)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run("\n\nRepositório: [COMPLETAR com o link público do GitHub]")
-r.font.highlight_color = WD_COLOR_INDEX.YELLOW
+r = p.add_run("\n\nRepositório: https://github.com/FelipeVoidela/gs-boca-de-lobo-big-data")
 r.bold = True
 doc.add_page_break()
 
@@ -385,7 +384,7 @@ par("Decisões que vale destacar: (1) GeoSampa gravado com a geometria como text
 par("Limitações e próximos passos: os pluviômetros do endpoint público do Cemaden não trazem coordenadas (a chuva observada entra "
     "como média da capital; com o token da API PED dá para ligar cada estação ao bairro); o SP156 aberto é trimestral; e o robô é "
     "simulado até o Maker Lab entregar o carrinho, quando só a função coletar_inspecoes muda.")
-pendente("Link do repositório público: https://github.com/<usuario>/<repositorio>")
+rico(("Repositório público: ", True), "https://github.com/FelipeVoidela/gs-boca-de-lobo-big-data")
 
 SAIDA.parent.mkdir(parents=True, exist_ok=True)
 doc.save(SAIDA)

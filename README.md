@@ -2,6 +2,7 @@
 
 > **GS 2026.2 · CitizenTech · Engenharia de Software 4º ano · FIAP**
 > Prof. Francisco Elanio Bezerra · Tema 2: Boca de Lobo
+> Repositório: https://github.com/FelipeVoidela/gs-boca-de-lobo-big-data
 
 Antes de cada temporal, um robô inspeciona as bocas de lobo do bairro e descobre quais estão entupidas.
 Este repositório é o **pipeline de dados** do produto: coleta a previsão de chuva, os pluviômetros, as áreas
