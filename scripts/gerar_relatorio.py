@@ -331,10 +331,8 @@ par("O sal é gerado dentro do Databricks (secret scope ou tabela config_lgpd) e
     "ouro_vw_mapa_cidadao (id do bueiro, coordenada, rua, status, nível de alerta, chuva prevista, situação de risco), que não tem "
     "dado pessoal. O bot de RPA lê ouro_vw_rota_limpeza.")
 print_ou_pendente("databricks_ouro_lgpd.jpg", "Notebook 03, prova da LGPD: o que a Prata guarda (restrita) e o que a Ouro expõe (hash, faixa e máscara)")
-imagem(PRINTS / "mvp_evite_a_area.png", "Tela do MVP lendo ouro_vw_mapa_cidadao: filtro 'Evite a área' e detalhe de um bueiro crítico em área R3")
+imagem(PRINTS / "mvp_evite_a_area.png", "Tela do MVP lendo o export de ouro_vw_mapa_cidadao (08/11, 259 bocas de lobo): filtro 'Evite a área' e detalhe de um bueiro crítico dentro de área R3")
 imagem(PRINTS / "mvp_celular.png", "Tela do MVP no celular: mapa, resumo por nível de alerta e chuva prevista", largura_cm=7)
-pendente("Os prints do MVP acima usam a prévia local (scripts/preview_local.py). Depois de rodar o notebook 03, troque o "
-         "mvp/dados/mapa_cidadao.json pelo export do Databricks e refaça os prints.")
 
 h("Requisito 09 · Repositório e README", 2)
 par("README com integrantes, ficha técnica, arquitetura, tabela de fontes, passo a passo para reproduzir (Airflow, lotes, "
@@ -363,8 +361,6 @@ print_ou_pendente("databricks_bronze_historico.jpg", "Notebook 01, histórico da
 # ------------------------------------------------------------------ 08
 h("08 · As 5 consultas SQL com resultado e interpretação")
 par("Arquivo databricks/04_consultas_mvp.sql. Limiar de chuva: 10 mm em 24 h (variável limiar_mm).", italico=True, tam=9.5)
-pendente("As interpretações abaixo foram escritas com a prévia local. Depois de rodar o notebook 04 com os dois lotes, "
-         "troque os números pelos do resultado do Databricks (a data de referência passa a ser a do lote 2).")
 
 consultas = [
     ("Consulta 1 · IMPACTO: críticos em área de risco com chuva prevista",
@@ -374,38 +370,27 @@ consultas = [
      "areas AS (SELECT DISTINCT a.id_area, a.qt_moradias, a.pessoas_estimadas FROM alvo JOIN ouro_dim_area_risco a ...)\n"
      "SELECT bueiros_inspecionados, criticos, criticos_em_area_de_risco, criticos_em_risco_com_chuva_24h,\n"
      "       areas_de_risco_afetadas, moradias_nas_areas, pessoas_estimadas ...",
-     "Em 07/11/2026 o robô inspecionou 192 bocas de lobo: 74 estavam críticas, 37 delas dentro ou ao lado de área de risco "
-     "hidrológico e 8 nessas condições com chuva prevista de 10 mm ou mais nas próximas 24 h. Essas 8 ficam em 7 setores de "
-     "risco com 1.421 moradias, cerca de 3.965 pessoas (2,79 moradores por domicílio, Censo 2022). É a lista que vira alerta "
-     "'Evite a área' no mapa e a prioridade zero da equipe de limpeza. Com limiar de 5 mm, seriam 37 pontos e ~25 mil pessoas."),
+     "Em 08/11/2026 (data de referência, lote 2) o robô inspecionou 190 bocas de lobo: 83 estavam críticas, 48 delas dentro ou ao lado de área de risco hidrológico e 9 nessas condições com chuva prevista de 10 mm ou mais nas próximas 24 h (máximo de 15,8 mm). Essas 9 ficam em 9 setores de risco de 4 subprefeituras, com 905 moradias e cerca de 2.525 pessoas (2,79 moradores por domicílio, Censo 2022). É exatamente a lista que vira alerta 'Evite a área' no mapa e a prioridade zero da equipe de limpeza; os outros 39 críticos em área de risco ficam em 'Atenção' porque a chuva prevista ficou abaixo do limiar."),
     ("Consulta 2 · Rota de limpeza priorizada (top 15)",
      "SELECT row_number() OVER (ORDER BY score_prioridade DESC, obstrucao_pct DESC) AS ordem, id_bueiro, logradouro,\n"
      "       subprefeitura, status_ia, obstrucao_pct, situacao_risco, grau_risco, chuva_prevista_24h_mm, score_prioridade\n"
      "FROM ouro_fato_inspecao f JOIN ouro_dim_bueiro b ... WHERE data_inspecao = data_ref AND status_ia IN ('critico','atencao')",
-     "O topo da rota é a Rua Simão Rocha (Jabaquara), crítica dentro de área R4 (score 86), seguida de três pontos em áreas R3 do "
-     "Jaçanã-Tremembé e um em São Miguel (score 82). O score põe na frente quem combina bueiro entupido + área que alaga + chuva, "
-     "e não só quem está mais sujo: é a rota que a concessionária paga para receber."),
+     "O topo da rota de 08/11 é a Rua Calil Jorge Calixto (Capão Redondo, Campo Limpo): 100% obstruída, dentro de área R4, score 88, seguida da Rua Harry Dannenberg (Itaquera, R4, score 87, 28 pedidos do SP156 na vizinhança). Depois vêm pontos em áreas R3 de Campo Limpo, Capela do Socorro e M'Boi Mirim (score 82). Os três com 'Evite a área' no top 15 (Grajaú, Cidade Dutra e Campo Grande) são os que somam chuva acima de 10 mm. O score põe na frente quem combina bueiro entupido + área que alaga + chuva + reclamação do cidadão, e não só quem está mais sujo: é a rota que a concessionária paga para receber."),
     ("Consulta 3 · Subprefeituras com mais críticos em área de risco",
      "SELECT subprefeitura, count(*) inspecionados, count_if(status_ia='critico') criticos, pct_criticos,\n"
      "       count_if(status_ia='critico' AND situacao_risco<>'fora') criticos_em_risco, ...\n"
      "GROUP BY subprefeitura HAVING count(*) >= 3 ORDER BY criticos_em_risco DESC",
-     "M'Boi Mirim e São Miguel lideram com 6 bueiros críticos em área de risco cada, seguidas de Campo Limpo (5) e "
-     "Jaçanã-Tremembé (3): todas periféricas, o mesmo território do cidadão do tema. É onde a primeira equipe deve ir."),
+     "Campo Limpo lidera com 9 bueiros críticos em área de risco (12 críticos em 21 inspecionados, 57%), seguida de São Miguel (6), Capela do Socorro e M'Boi Mirim (5 cada). Capela do Socorro concentra 5 dos 12 alertas 'Evite a área' do dia porque é onde a chuva prevista média é maior (10,7 mm). Todas são subprefeituras periféricas, o mesmo território do cidadão do tema: é onde a primeira equipe deve ir. São Miguel também é a que tem mais pedidos do SP156 perto dos bueiros (272)."),
     ("Consulta 4 · Evolução entre coletas",
      "SELECT d.data, count(*) inspecoes, count_if(status_ia='livre') livres, count_if(status_ia='atencao') atencao,\n"
      "       count_if(status_ia='critico') criticos, avg(obstrucao_pct), avg(chuva_prevista_24h_mm), ...\n"
      "FROM ouro_fato_inspecao f JOIN ouro_dim_data d ON d.data = f.data_inspecao GROUP BY d.data",
-     "De 06/11 para 07/11 os críticos subiram de 68 para 74 (de 188 e 192 inspeções válidas) e a obstrução média passou de "
-     "56,1% para 56,8%: sem limpeza, o lixo acumula. Com o pipeline rodando todo dia, a mesma consulta mostra o efeito de "
-     "cada mutirão de limpeza e serve de indicador do contrato com a concessionária."),
+     "De 07/11 para 08/11 os críticos subiram de 74 para 83 (de 192 e 190 inspeções válidas), a obstrução média passou de 56,8% para 61,2% e os alertas 'Evite a área' foram de 8 para 9. A chuva observada nas últimas 72 h subiu de 2,2 mm para 11,3 mm, e a chuva prevista para as 24 h seguintes caiu de 9,3 mm para 7,9 mm: sem limpeza, o lixo acumula de um dia para o outro. Com o pipeline rodando todo dia, a mesma consulta mostra o efeito de cada mutirão e serve de indicador do contrato com a concessionária."),
     ("Consulta 5 · Espera do cidadão no SP156 x o que o robô encontra",
      "WITH sp156 AS (SELECT subprefeitura, count(*) pedidos_limpeza_bueiro, percentile_approx(dias_atendimento,0.5),\n"
      "       count_if(status='Aberto') ainda_abertos ... FROM ouro_fato_solicitacao_sp156 WHERE pedido_limpeza_bueiro ...),\n"
      "robo AS (... criticos_robo por subprefeitura) SELECT ... FROM sp156 LEFT JOIN robo ...",
-     "No 3º trimestre de 2026 foram 5.757 pedidos de limpeza de bueiro no SP156; 9,4% seguiam abertos na coleta. A mediana de "
-     "atendimento é baixa (1 dia), mas varia muito: na Sé e em Pinheiros cerca de 1 em cada 3 pedidos ainda estava aberto, "
-     "enquanto em São Miguel quase todos foram fechados. Cruzando com o robô dá para ver onde o pedido foi fechado e o bueiro "
-     "continua crítico, um argumento para a prefeitura contratar a inspeção."),
+     "Entre as subprefeituras com mais pedidos de limpeza de bueiro no SP156 (Sé 369, Itaquera 325, Pinheiros 319, Mooca 305), a mediana de atendimento é baixa (0 a 5 dias), mas o percentual que segue aberto varia muito: na Sé 33,9% e em Pinheiros 31,3% dos pedidos ainda estavam abertos na coleta, contra 0,8% em São Miguel e 1,9% em Capela do Socorro. O cruzamento com o robô mostra o outro lado: em São Miguel e Capela do Socorro quase tudo foi fechado no SP156, mas o robô encontrou 7 e 8 bueiros críticos em 08/11. Pedido fechado não significa bueiro limpo, um argumento para a prefeitura contratar a inspeção automática."),
 ]
 for titulo, sql, interp in consultas:
     h(titulo, 2)
