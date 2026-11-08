@@ -93,8 +93,10 @@ docker compose up airflow-init
 docker compose up -d
 ```
 
-Abra `http://localhost:8080` (ou a `AIRFLOW_PORT` do `.env`), entre com o usuário do `.env`, ative o DAG
-`gs_boca_de_lobo_coleta` e clique em **Acionar**. Em ~20 s aparecem os 5 arquivos do dia em `chegada/`.
+Abra `http://localhost:8080` (ou a `AIRFLOW_PORT` do `.env`), entre com o usuário do `.env` e ative o DAG
+`gs_boca_de_lobo_coleta`. Ele roda sozinho todo dia às 06h e, em ~20 s, grava os 5 arquivos do dia em `chegada/`.
+Para testar na hora, clique em **Acionar**: a execução manual gera os mesmos arquivos, mas sobrescreve os do dia
+com o retrato daquela hora, por isso os lotes enviados ao Databricks usam só execuções agendadas (ver *Limitações*).
 
 **Variables (Admin → Variables), todas opcionais:**
 

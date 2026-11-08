@@ -343,9 +343,9 @@ print_ou_pendente("github_readme.jpg", "Repositório público no GitHub com o RE
 # ------------------------------------------------------------------ 06
 doc.add_page_break()
 h("06 · Prints do Airflow: Graph e Grid com execuções concluídas")
-imagem(PRINTS / "airflow_grid.png", "Visão Grid: execuções agendadas do DAG, todas as tarefas em verde")
+imagem(PRINTS / "airflow_grid.png", "Visão Geral: grade filtrada por tipo agendado (06h de 07/11 e 08/11, todas as tarefas em verde) e histórico das últimas execuções, nenhuma falha")
 imagem(PRINTS / "airflow_graph.png", "Visão Graph de uma execução agendada (06h): coletas em paralelo, conferência e notificação")
-imagem(PRINTS / "airflow_execucoes.png", "Lista de execuções do DAG gs_boca_de_lobo_coleta")
+imagem(PRINTS / "airflow_execucoes.png", "Lista de execuções agendadas do DAG gs_boca_de_lobo_coleta (07/11 e 08/11, 06h), ambas com sucesso")
 
 # ------------------------------------------------------------------ 07
 h("07 · Contagens da Bronze antes e depois do 2º lote e da 2ª execução")
