@@ -200,7 +200,8 @@ r = p.add_run("Componente Dados: pipeline Airflow + Lakehouse Bronze/Prata/Ouro 
 r.font.size = Pt(13)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = p.add_run("\n\nRepositório: https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture")
+r = p.add_run("\n\nRepositório: https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture"
+              "\nMVP (mapa do cidadão): https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/")
 r.bold = True
 doc.add_page_break()
 
@@ -329,7 +330,9 @@ tabela(["Dado pessoal", "Na Prata (restrita)", "Na Ouro"], [
 par("O sal é gerado dentro do Databricks (secret scope ou tabela config_lgpd) e passado às consultas como parâmetro nomeado, "
     "então não aparece no código nem no texto da query. Contrato com o produto: o mapa público lê SOMENTE a view "
     "ouro_vw_mapa_cidadao (id do bueiro, coordenada, rua, status, nível de alerta, chuva prevista, situação de risco), que não tem "
-    "dado pessoal. O bot de RPA lê ouro_vw_rota_limpeza.")
+    "dado pessoal. O bot de RPA lê ouro_vw_rota_limpeza. A tela do cidadão está publicada em "
+    "https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/ (GitHub Pages da pasta mvp/, lendo o export da view); "
+    "o deploy definitivo, com container, pipeline e monitoramento, é o componente da disciplina de DevOps.")
 print_ou_pendente("databricks_ouro_lgpd.jpg", "Notebook 03, prova da LGPD: o que a Prata guarda (restrita) e o que a Ouro expõe (hash, faixa e máscara)")
 imagem(PRINTS / "mvp_evite_a_area.png", "Tela do MVP lendo o export de ouro_vw_mapa_cidadao (08/11, 259 bocas de lobo): filtro 'Evite a área' e detalhe de um bueiro crítico dentro de área R3")
 imagem(PRINTS / "mvp_celular.png", "Tela do MVP no celular: mapa, resumo por nível de alerta e chuva prevista", largura_cm=7)
@@ -414,6 +417,7 @@ par("Limitações e próximos passos: os pluviômetros do endpoint público do C
     "como média da capital; com o token da API PED dá para ligar cada estação ao bairro); o SP156 aberto é trimestral; e o robô é "
     "simulado até o Maker Lab entregar o carrinho, quando só a função coletar_inspecoes muda.")
 rico(("Repositório público: ", True), "https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture")
+rico(("MVP publicado (mapa do cidadão): ", True), "https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/")
 
 SAIDA.parent.mkdir(parents=True, exist_ok=True)
 doc.save(SAIDA)

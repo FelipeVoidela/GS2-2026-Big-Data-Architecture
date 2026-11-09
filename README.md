@@ -27,6 +27,7 @@ mapa público a resposta para *"onde não passar hoje?"*.
 | Componentes | Robô (Maker Lab) · YOLO (Visão) · RAG da Defesa Civil (GenAI) · **pipeline de dados (este repo)** · bot de alertas (RPA) · mapa público com observabilidade (DevOps) · modelo de negócio (BI) |
 | Fontes de dados | Open-Meteo, Cemaden, GeoSampa, SP156 e inspeções do robô (ver tabela abaixo) |
 | Modelos de IA | Classificador embarcado livre/atenção/crítico (ultrassom) e YOLO com 4 classes de bueiro |
+| URL do MVP e repositório | Mapa do cidadão: **https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/** (GitHub Pages da pasta `mvp/`, lendo o export da Ouro) · Repositório: https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture |
 | Indicadores de impacto | Pontos críticos em área de risco com chuva prevista; moradias e pessoas nessas áreas; tempo de espera no SP156 |
 | ODS | 11 (cidades resilientes), 13 (adaptação ao clima), 3 (saúde, doenças de veiculação hídrica) |
 
@@ -137,6 +138,15 @@ python -m http.server 8000 -d mvp
 
 Abra `http://localhost:8000`. Para desenvolver a tela antes do lakehouse ficar pronto, `python scripts/preview_local.py`
 gera o mesmo JSON a partir de `chegada/` com as mesmas regras (requer `pip install -r requirements.txt`).
+
+**Versão pública:** a mesma tela está no ar em **https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/**
+(GitHub Pages servindo o branch `gh-pages`, que é a pasta `mvp/`). Para atualizar depois de um novo export da Ouro:
+
+```bash
+git subtree push --prefix mvp origin gh-pages
+```
+
+O deploy definitivo do MVP, com container, pipeline e monitoramento, é o componente da disciplina de DevOps.
 
 ## Onde cada requisito está
 
