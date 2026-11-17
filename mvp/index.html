@@ -81,6 +81,8 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// API do MVP (EC2 + DynamoDB). Serve o mesmo formato do export da camada Ouro (ouro_vw_mapa_cidadao).
+const API_MAPA = "https://98-86-45-71.sslip.io/api/v1/mapa";
 const COR = { "EVITE A AREA": "#b42318", "ATENCAO": "#e8a317", "NORMAL": "#2f9e5b" };
 const ROTULO = { "EVITE A AREA": "Evite a área", "ATENCAO": "Atenção", "NORMAL": "Normal" };
 const CLASSE = { "EVITE A AREA": "EVITE", "ATENCAO": "ATENCAO", "NORMAL": "NORMAL" };
@@ -134,7 +136,7 @@ function render() {
   });
 }
 
-fetch("dados/mapa_cidadao.json")
+fetch(API_MAPA)
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(d => {
     pontos = d.pontos.sort((a, b) => ORDEM[a.nivel_alerta] - ORDEM[b.nivel_alerta] || b.score_prioridade - a.score_prioridade);
