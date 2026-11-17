@@ -302,33 +302,41 @@ print(f"{len(linhas)} pontos exportados para {destino}")
 
 # MAGIC %md ### Publicação na AWS (S3 → Lambda → DynamoDB → API do mapa)
 # MAGIC
-# MAGIC Envia o `mapa_cidadao.json` gerado acima para o bucket de ingestão. A credencial é de um usuário IAM que
-# MAGIC **só** pode gravar em `entrada/` (`boca-lobo-databricks`) e fica no *secret scope* `gs`, nunca no código:
+# MAGIC Envia o `mapa_cidadao.json` gerado acima para o bucket de ingestão. Toda a configuração da AWS fica no
+# MAGIC *secret scope* `gs`, nunca no código nem em widget. A credencial é de um usuário IAM que **só** pode gravar
+# MAGIC em `entrada/` (`boca-lobo-databricks`):
+# MAGIC
+# MAGIC | Secret (scope `gs`) | Valor |
+# MAGIC |---|---|
+# MAGIC | `aws_access_key_id` | Access key ID do usuário `boca-lobo-databricks` |
+# MAGIC | `aws_secret_access_key` | Secret access key desse usuário |
+# MAGIC | `aws_bucket_ingestao` | `boca-lobo-s3-ingestao` |
 # MAGIC
 # MAGIC ```
 # MAGIC databricks secrets create-scope gs                      # se ainda não existir (o sal_lgpd usa o mesmo scope)
 # MAGIC databricks secrets put-secret gs aws_access_key_id
 # MAGIC databricks secrets put-secret gs aws_secret_access_key
+# MAGIC databricks secrets put-secret gs aws_bucket_ingestao
 # MAGIC ```
 # MAGIC
 # MAGIC Se o envio falhar, a célula **falha de propósito** (sem falha silenciosa). Plano B: baixar o JSON do Volume e
-# MAGIC rodar `scripts/publicar_mapa.sh` no repositório de DevOps. Para pular o envio, use o widget `publicar_aws = nao`.
+# MAGIC rodar `scripts/publicar_mapa.sh` no repositório de DevOps.
 
 # COMMAND ----------
 
 try:
     chave_id = dbutils.secrets.get("gs", "aws_access_key_id")
     chave_secreta = dbutils.secrets.get("gs", "aws_secret_access_key")
+    bucket = dbutils.secrets.get("gs", "aws_bucket_ingestao")
 except Exception as exc:  # noqa: BLE001
     raise RuntimeError(
-        "Credencial AWS não encontrada no secret scope 'gs' (aws_access_key_id / aws_secret_access_key). "
-        "Veja as instruções na célula acima ou rode com publicar_aws = nao."
+        "Configuração AWS incompleta no secret scope 'gs' "
+        "(aws_access_key_id, aws_secret_access_key, aws_bucket_ingestao). Veja as instruções na célula acima."
     ) from exc
 
 import boto3
 from botocore.config import Config
 
-bucket = dbutils.widgets.get("bucket_ingestao")
 chave_s3 = f"entrada/mapa_cidadao_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json"
 s3 = boto3.client(
     "s3",
