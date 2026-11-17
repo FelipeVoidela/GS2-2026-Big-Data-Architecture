@@ -277,12 +277,14 @@ WHERE table_schema = 'gs' AND table_name LIKE 'ouro_%' ORDER BY table_name
 # COMMAND ----------
 
 # MAGIC %md ### Exportação para o MVP
-# MAGIC Gera `mapa_cidadao.json` no volume. A equipe baixa o arquivo e publica em `mvp/dados/` (ou o backend do MVP
-# MAGIC consulta a view direto pela API de SQL do Databricks, com token guardado como segredo do deploy).
+# MAGIC Gera `mapa_cidadao.json` no volume e, na célula seguinte, envia para a AWS
+# MAGIC (`s3://boca-lobo-s3-ingestao/entrada/`). Lá, uma Lambda valida o arquivo e publica no DynamoDB que a API do
+# MAGIC mapa lê. O `gerado_em` sai em ISO 8601 com fuso (UTC) para a API calcular a idade dos dados sem ambiguidade.
 
 # COMMAND ----------
 
 import json
+from datetime import datetime, timezone
 
 linhas = [r.asDict() for r in spark.table("ouro_vw_mapa_cidadao").collect()]
 for r in linhas:
@@ -291,7 +293,56 @@ for r in linhas:
 destino = f"/Volumes/{CATALOGO}/{SCHEMA}/chegada/_mvp/mapa_cidadao.json"
 dbutils.fs.mkdirs(f"/Volumes/{CATALOGO}/{SCHEMA}/chegada/_mvp")
 with open(destino, "w", encoding="utf-8") as fh:
-    json.dump({"gerado_em": str(spark.sql("SELECT current_timestamp()").first()[0]),
+    json.dump({"gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                "fonte": f"{CATALOGO}.{SCHEMA}.ouro_vw_mapa_cidadao",
                "limiar_chuva_mm": LIMIAR, "pontos": linhas}, fh, ensure_ascii=False, default=str)
 print(f"{len(linhas)} pontos exportados para {destino}")
+
+# COMMAND ----------
+
+# MAGIC %md ### Publicação na AWS (S3 → Lambda → DynamoDB → API do mapa)
+# MAGIC
+# MAGIC Envia o `mapa_cidadao.json` gerado acima para o bucket de ingestão. A credencial é de um usuário IAM que
+# MAGIC **só** pode gravar em `entrada/` (`boca-lobo-databricks`) e fica no *secret scope* `gs`, nunca no código:
+# MAGIC
+# MAGIC ```
+# MAGIC databricks secrets create-scope gs                      # se ainda não existir (o sal_lgpd usa o mesmo scope)
+# MAGIC databricks secrets put-secret gs aws_access_key_id
+# MAGIC databricks secrets put-secret gs aws_secret_access_key
+# MAGIC ```
+# MAGIC
+# MAGIC Se o envio falhar, a célula **falha de propósito** (sem falha silenciosa). Plano B: baixar o JSON do Volume e
+# MAGIC rodar `scripts/publicar_mapa.sh` no repositório de DevOps. Para pular o envio, use o widget `publicar_aws = nao`.
+
+# COMMAND ----------
+
+try:
+    chave_id = dbutils.secrets.get("gs", "aws_access_key_id")
+    chave_secreta = dbutils.secrets.get("gs", "aws_secret_access_key")
+except Exception as exc:  # noqa: BLE001
+    raise RuntimeError(
+        "Credencial AWS não encontrada no secret scope 'gs' (aws_access_key_id / aws_secret_access_key). "
+        "Veja as instruções na célula acima ou rode com publicar_aws = nao."
+    ) from exc
+
+import boto3
+from botocore.config import Config
+
+bucket = dbutils.widgets.get("bucket_ingestao")
+chave_s3 = f"entrada/mapa_cidadao_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json"
+s3 = boto3.client(
+    "s3",
+    region_name="us-east-1",
+    aws_access_key_id=chave_id,
+    aws_secret_access_key=chave_secreta,
+    config=Config(connect_timeout=10, read_timeout=30, retries={"max_attempts": 3}),
+)
+try:
+    with open(destino, "rb") as fh:
+        s3.put_object(Bucket=bucket, Key=chave_s3, Body=fh, ContentType="application/json")
+except Exception as exc:  # noqa: BLE001
+    raise RuntimeError(
+        f"Falha ao enviar para s3://{bucket}/{chave_s3}: {exc}. Se for erro de conexão, o workspace pode não ter "
+        "acesso à internet: baixe o JSON do Volume e use scripts/publicar_mapa.sh (plano B)."
+    ) from exc
+print(f"Enviado para s3://{bucket}/{chave_s3}. A Lambda publica no DynamoDB e a API passa a servir em até 60 s.")
