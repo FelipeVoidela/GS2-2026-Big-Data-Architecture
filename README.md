@@ -27,7 +27,7 @@ mapa público a resposta para *"onde não passar hoje?"*.
 | Componentes | Robô (Maker Lab) · YOLO (Visão) · RAG da Defesa Civil (GenAI) · **pipeline de dados (este repo)** · bot de alertas (RPA) · mapa público com observabilidade (DevOps) · modelo de negócio (BI) |
 | Fontes de dados | Open-Meteo, Cemaden, GeoSampa, SP156 e inspeções do robô (ver tabela abaixo) |
 | Modelos de IA | Classificador embarcado livre/atenção/crítico (ultrassom) e YOLO com 4 classes de bueiro |
-| URL do MVP e repositório | Mapa do cidadão: **https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/** (GitHub Pages da pasta `mvp/`; lê a API do MVP na AWS, alimentada pelo export da Ouro, e usa a cópia do export publicada com a página se a API não responder) · Repositório: https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture |
+| URL do MVP e repositório | Mapa do cidadão: **https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/** (GitHub Pages da pasta `mvp/`, lendo o export da Ouro) · Repositório: https://github.com/FelipeVoidela/GS2-2026-Big-Data-Architecture |
 | Indicadores de impacto | Pontos críticos em área de risco com chuva prevista; moradias e pessoas nessas áreas; tempo de espera no SP156 |
 | ODS | 11 (cidades resilientes), 13 (adaptação ao clima), 3 (saúde, doenças de veiculação hídrica) |
 
@@ -41,15 +41,14 @@ Fontes ──► Airflow (06h, 5 coletas em paralelo) ──► chegada/<fonte>/
         ──► BRONZE (Auto Loader) ──► PRATA (regras + MERGE) ──► OURO (estrela + LGPD)
         ──► ouro_vw_mapa_cidadao (MVP)  ·  ouro_vw_rota_limpeza (RPA)  ·  5 consultas SQL (BI)
 
-ouro_vw_mapa_cidadao ──► mapa_cidadao.json ──► S3 ──► Lambda (valida) ──► DynamoDB ──► API do MVP (EC2) ──► mapa público
-                                           └──► cópia em mvp/dados/ (plano B do mapa, publicada no GitHub Pages)
+ouro_vw_mapa_cidadao ──► mapa_cidadao.json (export) ──► mvp/dados/ ──► mapa público (GitHub Pages)
 ```
 
 O Databricks Free Edition não se conecta ao Airflow: os arquivos de `chegada/` sobem ao Volume **pela interface**.
 
-O trecho na AWS (S3, Lambda, DynamoDB e a API no EC2) é o componente de DevOps e está em
-[FelipeHeilmann/boca-lobo-api](https://github.com/FelipeHeilmann/boca-lobo-api). Este repositório entrega a ele o
-`mapa_cidadao.json`, no formato da view `ouro_vw_mapa_cidadao`.
+O mapa deste repositório lê só o export publicado junto da tela. O deploy do produto na AWS é o componente da disciplina
+de DevOps ([FelipeHeilmann/boca-lobo-api](https://github.com/FelipeHeilmann/boca-lobo-api)): para alimentá-lo, o
+`03_ouro.py` também envia o mesmo export a um bucket S3, mas nada aqui depende desse envio.
 
 ### Fontes
 
@@ -82,7 +81,7 @@ databricks/                   notebooks (formato source do Databricks) e SQL
   03_ouro.py                  dimensões, fatos, LGPD, views do MVP, exportação e envio ao S3
   04_consultas_mvp.sql        as 5 consultas (1 de impacto)
 amostras/                     um pouco de cada fonte (SP156 com número e CEP mascarados)
-mvp/                          tela do cidadão (Leaflet): lê a API do MVP e, se ela não responde, a cópia do export em mvp/dados/
+mvp/                          tela do cidadão (Leaflet) que lê o export de ouro_vw_mapa_cidadao
 scripts/                      lotes, amostras, prévia local da Ouro, diagrama
 docs/                         diagrama e prints
 relatorio/                    relatório (.docx gerado por scripts/gerar_relatorio.py; o PDF vai no Teams)
@@ -135,22 +134,15 @@ python scripts/montar_lotes.py --lote 2 --datas 2026-11-08
 5. Rode `01` **mais uma vez sem subir nada**: a tabela de contagens mostra 0 linhas inseridas (não duplica).
 6. Rode `02_prata.py`, `03_ouro.py` e `04_consultas_mvp.sql`.
 
-A **última célula** do `03_ouro.py` envia o export ao S3 e precisa dos secrets `aws_access_key_id`,
-`aws_secret_access_key` e `aws_bucket_ingestao` no *secret scope* `gs`. Sem eles, essa célula falha de propósito
-(sem falha silenciosa), depois de as tabelas da Ouro e o `mapa_cidadao.json` já estarem gravados: para reproduzir só o
+A **última célula** do `03_ouro.py` é opcional: envia o export ao S3 do deploy de DevOps e precisa dos secrets
+`aws_access_key_id`, `aws_secret_access_key` e `aws_bucket_ingestao` no *secret scope* `gs`. Sem eles, essa célula
+falha de propósito, depois de as tabelas da Ouro e o `mapa_cidadao.json` já estarem gravados: para reproduzir o
 pipeline de dados, ignore o erro dessa célula.
 
 ### 4. MVP
 
 `03_ouro.py` grava `/Volumes/workspace/gs/chegada/_mvp/mapa_cidadao.json`, o export da view `ouro_vw_mapa_cidadao`.
-Ele chega à tela por dois caminhos:
-
-* **Ao vivo:** a última célula do notebook envia o arquivo para `s3://boca-lobo-s3-ingestao/entrada/`. Uma Lambda
-  valida o arquivo e grava no DynamoDB, e a API do MVP (EC2) serve o mesmo formato em `/api/v1/mapa`.
-* **Plano B:** baixe o arquivo do Volume e coloque em `mvp/dados/`. A tela espera a API por 5 s; se ela não responder,
-  mostra essa cópia e avisa o cidadão, com a data em que a cópia foi gerada.
-
-Para abrir a tela no seu computador:
+Baixe e coloque em `mvp/dados/`:
 
 ```bash
 python -m http.server 8000 -d mvp
@@ -171,7 +163,7 @@ git -C ../gh-pages commit -m "Atualiza o mapa do MVP"
 git -C ../gh-pages push origin gh-pages
 ```
 
-A infraestrutura da API (Terraform, container, pipeline e monitoramento) é o componente da disciplina de DevOps:
+O deploy definitivo do MVP na AWS, com container, pipeline e monitoramento, é o componente da disciplina de DevOps:
 [FelipeHeilmann/boca-lobo-api](https://github.com/FelipeHeilmann/boca-lobo-api).
 
 ## Onde cada requisito está
@@ -185,7 +177,7 @@ A infraestrutura da API (Terraform, container, pipeline e monitoramento) é o co
 | 05 · Bronze incremental sem duplicar | `01_bronze_autoloader.py` + `controle_cargas` |
 | 06 · Prata: tipos, nulos, MERGE, 3 regras com contagem | `02_prata.py` + `qualidade_regras` + `prata_quarentena` |
 | 07 · Ouro: 1 fato + 2 dimensões, 5 consultas | `03_ouro.py`, `04_consultas_mvp.sql` |
-| 08 · LGPD na Ouro e tela do MVP | hash com sal, faixa de numeração, CEP mascarado; `ouro_vw_mapa_cidadao` → export → API do MVP (cópia em `mvp/dados/`) → `mvp/` |
+| 08 · LGPD na Ouro e tela do MVP | hash com sal, faixa de numeração, CEP mascarado; `ouro_vw_mapa_cidadao` → export → `mvp/` |
 | 09 · README | este arquivo |
 
 ## LGPD
@@ -210,5 +202,5 @@ as credenciais da AWS usadas no envio ao S3 ficam no *secret scope* `gs` do Data
 * O SP156 aberto é trimestral: o pipeline sempre pega o arquivo mais recente, que pode ter até 3 meses de atraso.
 * Cemaden, GeoSampa e SP156 são o retrato do momento da coleta: por isso os lotes usam só execuções agendadas de dias
   diferentes, nunca execuções manuais com data lógica no passado (que trariam o retrato de hoje com a data de ontem no nome).
-* A API do MVP roda em um EC2 mantido pelo componente de DevOps. Quando ela está fora do ar, o mapa mostra a cópia do
-  export publicada no GitHub Pages (hoje a de 08/11/2026), com o aviso de que a previsão de chuva pode estar desatualizada.
+* O mapa público mostra o último export publicado em `mvp/dados/` (hoje o de 08/11/2026, lote 2). Para atualizar, é
+  preciso rodar o `03_ouro.py`, baixar o novo export do Volume e publicar a pasta `mvp/`.

@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 RAIZ = Path(__file__).resolve().parents[1]
-fig, ax = plt.subplots(figsize=(19.8, 8.2), dpi=150)
-ax.set_xlim(0, 198)
+fig, ax = plt.subplots(figsize=(17, 8.2), dpi=150)
+ax.set_xlim(0, 170)
 ax.set_ylim(0, 82)
 ax.axis("off")
 
@@ -31,7 +31,7 @@ def seta(x1, y1, x2, y2, rotulo="", cor="#334155", estilo="-|>", tracejada=False
 
 # Título
 ax.text(2, 79.5, "Boca de Lobo · fluxo de dados da fonte ao MVP", fontsize=15, fontweight="bold", color="#0f172a")
-ax.text(2, 76.2, "Coleta diária às 06h no Airflow  →  upload em lotes ao Volume  →  Bronze / Prata / Ouro no Databricks  →  export servido pela API na AWS  →  mapa do cidadão; a Ouro também alimenta a rota de limpeza e o BI",
+ax.text(2, 76.2, "Coleta diária às 06h no Airflow  →  upload em lotes ao Volume  →  Bronze / Prata / Ouro no Databricks  →  mapa do cidadão e rota de limpeza",
         fontsize=9.5, color="#475569")
 
 # Fontes
@@ -68,19 +68,14 @@ seta(116, 22.5, 116, 20.5)
 caixa(93, 9.5, 46, 10.5, "OURO · estrela + LGPD", "fato_inspecao · dim_bueiro · dim_area_risco · dim_data\nfato_solicitacao_sp156 · hash/máscara", cor=OURO, tam=8.6)
 
 # Consumo
-# Ouro -> AWS (componente de DevOps) -> mapa; se a API não responde, o mapa usa a cópia do export publicada com a página
-seta(139.5, 15, 146.5, 57, "export mapa_cidadao.json\n(view ouro_vw_mapa_cidadao)", pos=(158, 68.3))
-caixa(147, 48, 22, 19, "AWS · entrega ao mapa",
-      "S3 entrada/\n↓ Lambda valida\n↓ DynamoDB\n↓ API /api/v1/mapa (EC2)", cor=VERDE, tam=9)
-seta(169.5, 57, 174.5, 57, "lê a API (HTTPS)", pos=(185.5, 64.9))
-seta(139.5, 15, 174.5, 51, "plano B: cópia do export\nem mvp/dados/ (GitHub Pages)", tracejada=True, pos=(145, 40.5), ha="left")
-seta(139.5, 15, 174.5, 34, "lê ouro_vw_rota_limpeza", pos=(185.5, 42.9))
-seta(139.5, 15, 174.5, 13, "5 consultas SQL", pos=(185.5, 20.9))
-caixa(175, 50, 21, 14, "MVP · mapa público", "Evite a área / Atenção /\nNormal, chuva 24 h\n(sem dado pessoal)", cor=VERDE, tam=9)
-caixa(175, 28, 21, 14, "Bot RPA (07h)", "lista priorizada\nde limpeza + alertas\npara a região", cor=VERDE, tam=9)
-caixa(175, 6, 21, 14, "BI e pitch", "consulta de impacto:\ncríticos em risco\ncom chuva prevista", cor=VERDE, tam=9)
+seta(139.5, 15, 146.5, 56, "lê ouro_vw_mapa_cidadao", pos=(157.5, 64.9))
+seta(139.5, 15, 146.5, 34, "lê ouro_vw_rota_limpeza", pos=(157.5, 42.9))
+seta(139.5, 15, 146.5, 13, "5 consultas SQL", pos=(157.5, 20.9))
+caixa(147, 50, 21, 14, "MVP · mapa público", "Evite a área / Atenção /\nNormal, chuva 24 h\n(sem dado pessoal)", cor=VERDE, tam=9)
+caixa(147, 28, 21, 14, "Bot RPA (07h)", "lista priorizada\nde limpeza + alertas\npara a região", cor=VERDE, tam=9)
+caixa(147, 6, 21, 14, "BI e pitch", "consulta de impacto:\ncríticos em risco\ncom chuva prevista", cor=VERDE, tam=9)
 
-ax.text(2, 1.5, "Azul: fontes externas reais · Verde: componentes das outras disciplinas · Tracejado: etapa manual (upload ao Volume, porque a Free Edition não conecta ao Airflow; cópia do export usada quando a API não responde)",
+ax.text(2, 1.5, "Azul: fontes externas reais · Verde: componentes das outras disciplinas · Tracejado: etapa manual (Free Edition não conecta ao Airflow)",
         fontsize=8.2, color="#475569")
 saida = RAIZ / "docs" / "arquitetura.png"
 fig.savefig(saida, bbox_inches="tight", facecolor="white")

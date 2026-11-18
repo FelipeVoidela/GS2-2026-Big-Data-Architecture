@@ -234,11 +234,9 @@ tabela(["#", "Pergunta", "Quem pergunta", "Tabela/consulta"], [
 
 # ------------------------------------------------------------------ 03
 h("03 · Diagrama do fluxo de dados, da fonte ao MVP")
-imagem(RAIZ / "docs" / "arquitetura.png", "Fluxo de dados: fontes → Airflow → chegada/ → Volume → Bronze → Prata → Ouro → export → API na AWS → MVP; RPA e BI leem a Ouro")
+imagem(RAIZ / "docs" / "arquitetura.png", "Fluxo de dados: fontes → Airflow → chegada/ → Volume → Bronze → Prata → Ouro → MVP, RPA e BI")
 par("O Databricks Free Edition não se conecta ao Airflow: os arquivos de chegada/ sobem ao Volume pela interface, em lotes "
-    "de dias de coleta diferentes (seta tracejada). Da Ouro, o export da view do mapa vai para a AWS (S3, Lambda, DynamoDB e "
-    "API), de onde a tela do cidadão lê; a segunda seta tracejada é o plano B, a cópia do export publicada junto da tela.",
-    italico=True, tam=9.5)
+    "de dias de coleta diferentes (seta tracejada).", italico=True, tam=9.5)
 
 # ------------------------------------------------------------------ 04
 h("04 · Tabela de fontes")
@@ -332,14 +330,11 @@ tabela(["Dado pessoal", "Na Prata (restrita)", "Na Ouro"], [
 par("O sal é gerado dentro do Databricks (secret scope ou tabela config_lgpd) e passado às consultas como parâmetro nomeado, "
     "então não aparece no código nem no texto da query. Contrato com o produto: o mapa público lê SOMENTE a view "
     "ouro_vw_mapa_cidadao (id do bueiro, coordenada, rua, status, nível de alerta, chuva prevista, situação de risco), que não tem "
-    "dado pessoal. O bot de RPA lê ouro_vw_rota_limpeza.")
-par("Como o dado chega à tela: o notebook 03 exporta a view para mapa_cidadao.json e envia o arquivo ao S3; uma Lambda valida "
-    "o arquivo e grava no DynamoDB, e a API do MVP (EC2, rota /api/v1/mapa) serve o mesmo formato à tela, publicada em "
-    "https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/ (GitHub Pages da pasta mvp/). Plano B: a tela espera a "
-    "API por 5 segundos; se ela não responder, mostra a cópia do export publicada junto da página e avisa o cidadão, com a "
-    "data da cópia, de que a previsão de chuva pode estar desatualizada. As credenciais da AWS ficam no secret scope do "
-    "Databricks, nunca no código. A infraestrutura da API (Terraform, container, pipeline e monitoramento) é o componente da "
-    "disciplina de DevOps: https://github.com/FelipeHeilmann/boca-lobo-api.")
+    "dado pessoal. O bot de RPA lê ouro_vw_rota_limpeza. A tela do cidadão está publicada em "
+    "https://felipevoidela.github.io/GS2-2026-Big-Data-Architecture/ (GitHub Pages da pasta mvp/, lendo o export da view, "
+    "publicado junto da página). O deploy definitivo na AWS, com container, pipeline e monitoramento, é o componente da "
+    "disciplina de DevOps: para alimentá-lo, o notebook 03 também envia o mesmo export a um bucket S3, com as credenciais no "
+    "secret scope do Databricks, nunca no código. O mapa deste repositório não depende desse envio.")
 print_ou_pendente("databricks_ouro_lgpd.jpg", "Notebook 03, prova da LGPD: o que a Prata guarda (restrita) e o que a Ouro expõe (hash, faixa e máscara)")
 imagem(PRINTS / "mvp_evite_a_area.png", "Tela do MVP lendo o export de ouro_vw_mapa_cidadao (08/11, 259 bocas de lobo): filtro 'Evite a área' e detalhe de um bueiro crítico dentro de área R3")
 imagem(PRINTS / "mvp_celular.png", "Tela do MVP no celular: mapa, resumo por nível de alerta e chuva prevista", largura_cm=7)
@@ -419,9 +414,8 @@ par("O componente Dados coleta todos os dias, às 06h, cinco fontes que juntas r
     "espacial resolvido por H3 e os dados pessoais protegidos por hash, faixa e máscara.")
 par("Decisões que vale destacar: (1) GeoSampa gravado com a geometria como texto GeoJSON, para o Auto Loader não depender de "
     "inferir arrays de coordenadas aninhados; (2) try_cast em toda a Prata, porque o serverless roda em ANSI e o Cemaden manda '-' "
-    "quando a estação não mede; (3) chave por hash no SP156, que não publica protocolo; (4) o MVP mostra só o export de uma view sem dado "
-    "pessoal, servido pela API e com cópia de reserva na própria página: o contrato com o produto fica explícito e a tela "
-    "continua no ar quando a API cai.")
+    "quando a estação não mede; (3) chave por hash no SP156, que não publica protocolo; (4) o MVP lê só uma view sem dado pessoal, "
+    "o que torna o contrato com o produto explícito.")
 par("Limitações e próximos passos: os pluviômetros do endpoint público do Cemaden não trazem coordenadas (a chuva observada entra "
     "como média da capital; com o token da API PED dá para ligar cada estação ao bairro); o SP156 aberto é trimestral; e o robô é "
     "simulado até o Maker Lab entregar o carrinho, quando só a função coletar_inspecoes muda.")
