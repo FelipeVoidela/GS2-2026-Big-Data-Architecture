@@ -61,4 +61,20 @@ CREATE TABLE IF NOT EXISTS {CATALOGO}.{SCHEMA}.prata_quarentena (
   executado_em TIMESTAMP, tabela STRING, regras_violadas ARRAY<STRING>,
   registro STRING, arquivo_origem STRING
 )""")
+
+from databricks.sdk import WorkspaceClient
+w = WorkspaceClient()
+
+# cria o scope "gs" se ainda não existir (o sal_lgpd também usa esse scope)
+if "gs" not in [s.name for s in w.secrets.list_scopes()]:
+    w.secrets.create_scope(scope="gs")
+
+# os valores são digitados na hora e não ficam salvos no código
+w.secrets.put_secret(scope="gs", key="aws_access_key_id",     string_value=input("Access key ID: ").strip())
+w.secrets.put_secret(scope="gs", key="aws_secret_access_key", string_value=input("Secret access key: ").strip())
+w.secrets.put_secret(scope="gs", key="aws_bucket_ingestao",   string_value="boca-lobo-s3-ingestao")
+
+print([s.key for s in w.secrets.list_secrets(scope="gs")])
+
+
 print("Setup concluído. Agora envie o 1º lote ao volume e rode o notebook 01.")
