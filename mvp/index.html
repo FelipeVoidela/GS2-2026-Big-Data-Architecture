@@ -28,6 +28,7 @@
   .chip.atencao { background: var(--atencao-bg); color: var(--atencao); }
   .chip.normal { background: var(--normal-bg); color: var(--normal); }
   .chuva { background: #eaf1fb; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .92rem; }
+  .aviso { background: var(--atencao-bg); color: var(--atencao); border: 1px solid var(--atencao-ponto); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; font-weight: 600; }
   label { font-weight: 600; font-size: .9rem; display: block; margin-bottom: 4px; }
   input[type=search] { width: 100%; padding: 10px 12px; font-size: 1rem; border: 1px solid var(--borda); border-radius: 8px; }
   input:focus-visible, button:focus-visible, li:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
@@ -64,6 +65,7 @@
       <div class="chip atencao"><b id="n-atencao">–</b><span>Atenção</span></div>
       <div class="chip normal"><b id="n-normal">–</b><span>Normal</span></div>
     </div>
+    <div class="aviso" id="aviso" role="status" hidden></div>
     <div class="chuva" id="chuva">Carregando previsão…</div>
     <label for="busca">Procure sua rua, bairro ou subprefeitura</label>
     <input id="busca" type="search" placeholder="Ex.: Itaim Paulista, Rua Jordânia" autocomplete="off">
@@ -136,9 +138,27 @@ function render() {
   });
 }
 
-fetch(API_MAPA)
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(d => {
+// Plano B: se a API não responder a tempo, a tela usa a última cópia do export da Ouro publicada junto com a
+// página (dados/mapa_cidadao.json) e avisa o cidadão de que os dados não são os de agora.
+const COPIA_PUBLICADA = "dados/mapa_cidadao.json";
+const ESPERA_API_MS = 5000;
+
+function buscar(url, esperaMs) {
+  const ctl = new AbortController();
+  const relogio = setTimeout(() => ctl.abort(), esperaMs);
+  return fetch(url, { signal: ctl.signal })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(d => { if (!Array.isArray(d.pontos) || !d.pontos.length) throw new Error("sem pontos"); return d; })
+    .finally(() => clearTimeout(relogio));
+}
+
+function mostrar(d, copia) {
+    if (copia) {
+      const dia = String(d.gerado_em ?? "").slice(0, 10).split("-").reverse().join("/");
+      const aviso = document.getElementById("aviso");
+      aviso.textContent = `Dados ao vivo indisponíveis no momento. Mostrando a última cópia publicada${dia ? ", de " + dia : ""}: a previsão de chuva pode estar desatualizada.`;
+      aviso.hidden = false;
+    }
     pontos = d.pontos.sort((a, b) => ORDEM[a.nivel_alerta] - ORDEM[b.nivel_alerta] || b.score_prioridade - a.score_prioridade);
     const conta = n => pontos.filter(p => p.nivel_alerta === n).length;
     document.getElementById("n-evite").textContent = conta("EVITE A AREA");
@@ -161,7 +181,11 @@ fetch(API_MAPA)
        Dados: <code>${esc(d.fonte)}</code>. Nenhum dado pessoal é exibido.<br>
        Emergência: Defesa Civil <b>199</b> · Bombeiros <b>193</b>.`;
     render();
-  })
+}
+
+buscar(API_MAPA, ESPERA_API_MS)
+  .then(d => [d, false], () => buscar(COPIA_PUBLICADA, 20000).then(d => [d, true]))
+  .then(([d, copia]) => mostrar(d, copia))
   .catch(() => { document.getElementById("chuva").textContent = "Não foi possível carregar os dados agora. Tente de novo em instantes."; });
 
 document.getElementById("busca").addEventListener("input", render);
