@@ -278,7 +278,7 @@ WHERE table_schema = 'gs' AND table_name LIKE 'ouro_%' ORDER BY table_name
 
 # MAGIC %md ### Exportação para o MVP
 # MAGIC Gera `mapa_cidadao.json` no volume e, na célula seguinte, envia para a AWS
-# MAGIC (`s3://boca-lobo-s3-ingestao/entrada/`). Lá, uma Lambda valida o arquivo e publica no DynamoDB que a API do
+# MAGIC (`s3://boca-lobo-s3-ingestao/databricks/entrada/`, a pasta do fluxo Databricks). Lá, uma Lambda valida o arquivo e publica no DynamoDB que a API do
 # MAGIC mapa lê. O `gerado_em` sai em ISO 8601 com fuso (UTC) para a API calcular a idade dos dados sem ambiguidade.
 
 # COMMAND ----------
@@ -304,7 +304,8 @@ print(f"{len(linhas)} pontos exportados para {destino}")
 # MAGIC
 # MAGIC Envia o `mapa_cidadao.json` gerado acima para o bucket de ingestão. Toda a configuração da AWS fica no
 # MAGIC *secret scope* `gs`, nunca no código nem em widget. A credencial é de um usuário IAM que **só** pode gravar
-# MAGIC em `entrada/` (`boca-lobo-databricks`):
+# MAGIC em `databricks/entrada/` (`boca-lobo-databricks`). O bucket tem uma pasta por fluxo (`databricks/`, `rpa/`), cada
+# MAGIC uma com `entrada/`, `processado/` e `quarentena/`:
 # MAGIC
 # MAGIC | Secret (scope `gs`) | Valor |
 # MAGIC |---|---|
@@ -337,7 +338,7 @@ except Exception as exc:  # noqa: BLE001
 import boto3
 from botocore.config import Config
 
-chave_s3 = f"entrada/mapa_cidadao_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json"
+chave_s3 = f"databricks/entrada/mapa_cidadao_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json"
 s3 = boto3.client(
     "s3",
     region_name="us-east-1",

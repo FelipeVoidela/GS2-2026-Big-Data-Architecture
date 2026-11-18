@@ -48,7 +48,13 @@ O Databricks Free Edition não se conecta ao Airflow: os arquivos de `chegada/` 
 
 O mapa deste repositório lê só o export publicado junto da tela. O deploy do produto na AWS é o componente da disciplina
 de DevOps ([FelipeHeilmann/boca-lobo-api](https://github.com/FelipeHeilmann/boca-lobo-api)): para alimentá-lo, o
-`03_ouro.py` também envia o mesmo export a um bucket S3, mas nada aqui depende desse envio.
+`03_ouro.py` também envia o mesmo export a um bucket S3 (pasta do fluxo `databricks/entrada/`), mas nada aqui depende
+desse envio.
+
+A tela do MVP tem duas abas: **Onde não passar** (o mapa do cidadão, da camada Ouro) e **Limpeza (RPA)**, que mostra a
+última execução do bot de RPA (nível e chuva prevista, inspeções lidas/válidas/rejeitadas/duplicadas, ordens e alertas)
+e a lista de bocas de lobo para limpar, da mais urgente para a menos urgente, com prioridade, equipe e status. Essa aba
+lê `GET /api/v1/rpa` da API na AWS; se ela estiver fora, só a aba de limpeza avisa, e o mapa segue funcionando.
 
 ### Fontes
 
@@ -81,7 +87,7 @@ databricks/                   notebooks (formato source do Databricks) e SQL
   03_ouro.py                  dimensões, fatos, LGPD, views do MVP, exportação e envio ao S3
   04_consultas_mvp.sql        as 5 consultas (1 de impacto)
 amostras/                     um pouco de cada fonte (SP156 com número e CEP mascarados)
-mvp/                          tela do cidadão (Leaflet) que lê o export de ouro_vw_mapa_cidadao
+mvp/                          tela do MVP (Leaflet): mapa do cidadão + aba de limpeza do bot de RPA
 scripts/                      lotes, amostras, prévia local da Ouro, diagrama
 docs/                         diagrama e prints
 relatorio/                    relatório (.docx gerado por scripts/gerar_relatorio.py; o PDF vai no Teams)

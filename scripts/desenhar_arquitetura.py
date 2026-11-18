@@ -71,7 +71,7 @@ caixa(93, 9.5, 46, 10.5, "OURO · estrela + LGPD", "fato_inspecao · dim_bueiro 
 # Ouro -> AWS (componente de DevOps) -> mapa: o export da Ouro é publicado na AWS e o mapa lê a API
 seta(139.5, 15, 146.5, 57, "export mapa_cidadao.json\n(view ouro_vw_mapa_cidadao)", pos=(158, 68.3))
 caixa(147, 48, 22, 19, "AWS · entrega ao mapa",
-      "S3 entrada/\n↓ Lambda valida\n↓ DynamoDB\n↓ API /api/v1/mapa (EC2)", cor=VERDE, tam=9)
+      "S3 databricks/entrada/\n↓ Lambda valida\n↓ DynamoDB\n↓ API /api/v1/mapa (EC2)", cor=VERDE, tam=9)
 seta(169.5, 57, 174.5, 57, "lê a API (HTTPS)", pos=(185.5, 64.9))
 seta(139.5, 15, 174.5, 34, "lê ouro_vw_rota_limpeza", pos=(185.5, 42.9))
 seta(139.5, 15, 174.5, 13, "5 consultas SQL", pos=(185.5, 20.9))
