@@ -134,7 +134,7 @@ function render() {
   });
 }
 
-fetch("dados/mapa_cidadao.json")
+fetch("https://98-86-45-71.sslip.io/api/v1/mapa")
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(d => {
     pontos = d.pontos.sort((a, b) => ORDEM[a.nivel_alerta] - ORDEM[b.nivel_alerta] || b.score_prioridade - a.score_prioridade);
